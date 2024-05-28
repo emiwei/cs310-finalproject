@@ -1,18 +1,3 @@
-#
-# Client-side python app for benford app, which is calling
-# a set of lambda functions in AWS through API Gateway.
-# The overall purpose of the app is to process a PDF and
-# see if the numeric values in the PDF adhere to Benford's
-# law.
-#
-# Authors:
-#   Emily Wei
-#
-#   Prof. Joe Hummel (initial template)
-#   Northwestern University
-#   CS 310
-#
-
 import requests
 import jsons
 
@@ -49,6 +34,14 @@ class Job:
     self.originaldatafile = row[3]
     self.datafilekey = row[4]
     self.resultsfilekey = row[5]
+
+class Asset:
+
+  def __init__(self, row):
+    self.assetid = row[0]
+    self.userid = row[1]
+    self.assetname = row[2]
+    self.bucketkey = row[3]
 
 
 ############################################################
@@ -95,7 +88,7 @@ def prompt():
 #
 def songs(baseurl):
   """
-  Prints out all the users in the database
+  Prints out all the songs in the database
 
   Parameters
   ----------
@@ -137,26 +130,26 @@ def songs(baseurl):
     #
     # let's map each row into a User object:
     #
-    users = []
+    assets = []
     for row in body:
-      user = User(row)
-      users.append(user)
+      asset = Asset(row)
+      assets.append(asset)
     #
     # Now we can think OOP:
     #
-    if len(users) == 0:
-      print("no users...")
+    if len(assets) == 0:
+      print("no songs...")
       return
 
-    for user in users:
-      print(user.userid)
-      print(" ", user.username)
-      print(" ", user.pwdhash)
+    for asset in assets:
+      print(asset.assetid)
+      print(" ", asset.userid)
+      print(" ", asset.assetname)
     #
     return
 
   except Exception as e:
-    logging.error("users() failed:")
+    logging.error("songs() failed:")
     logging.error("url: " + url)
     logging.error(e)
     return
@@ -312,11 +305,11 @@ def upload(baseurl):
   nothing
   """
 
-  print("Enter PDF filename>")
+  print("Enter wav filename>")
   local_filename = input()
 
   if not pathlib.Path(local_filename).is_file():
-    print("PDF file '", local_filename, "' does not exist...")
+    print("Wav file '", local_filename, "' does not exist...")
     return
 
   print("Enter user id>")
@@ -344,7 +337,7 @@ def upload(baseurl):
     #
     # call the web service:
     #
-    api = '/pdf'
+    api = '/song'
     url = baseurl + api + "/" + userid
 
     res = requests.post(url, json=data)
@@ -464,11 +457,11 @@ def download(baseurl):
 ##########################################
 # upload and poll
 def upload_and_poll(baseurl):
-  print("Enter PDF filename>")
+  print("Enter wav file name>")
   local_filename = input()
 
   if not pathlib.Path(local_filename).is_file():
-    print("PDF file '", local_filename, "' does not exist...")
+    print("Wav file '", local_filename, "' does not exist...")
     return
 
   print("Enter user id>")
@@ -496,7 +489,7 @@ def upload_and_poll(baseurl):
     #
     # call the web service:
     #
-    api = '/pdf'
+    api = '/song'
     url = baseurl + api + "/" + userid
 
     res = requests.post(url, json=data)
