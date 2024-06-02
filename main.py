@@ -349,6 +349,46 @@ def reset(baseurl):
 #
 # upload
 #
+def uploadyoutube(baseurl):
+  print("Enter userid>")
+  userid = input()
+  print("Enter wav filename>")
+  local_filename = input()
+  print("Enter url>")
+  url = input()
+  print("the url was" , url)
+  # call the web service:
+  #
+  data = {"filename": local_filename, "url": url}
+  api = '/song/youtube'
+  api_url = baseurl + api + "/" + userid
+
+  res = requests.post(api_url, json=data)
+
+  #
+  # let's look at what we got back:
+  #
+  if res.status_code != 200:
+    # failed:
+    print("Failed with status code:", res.status_code)
+    print("url: " + url)
+    if res.status_code == 400:
+      # we'll have an error message
+      body = res.json()
+      print("Error message:", body)
+    #
+    return
+
+  #
+  # success, extract jobid:
+  #
+  body = res.json()
+
+  jobid = body
+
+  print("Wav file uploaded, job id =", jobid)
+
+
 def upload(baseurl):
   """
   Prompts the user for a local filename and user id, 
