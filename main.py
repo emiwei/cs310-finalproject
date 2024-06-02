@@ -1,3 +1,4 @@
+import json
 import requests
 import jsons
 
@@ -65,10 +66,10 @@ def prompt():
   print("   0 => end")
   print("   1 => songs")
   print("   2 => jobs")
-  print("   3 => reset database")
+  print("   3 => reset jobs")
   print("   4 => upload song")
+  print("   5 => upload song via youtube")
   print("   5 => download song")
-  print("   6 => upload and poll")
 
   cmd = input()
 
@@ -199,9 +200,16 @@ def jobs(baseurl):
     # deserialize and extract jobs:
     #
     body = res.json()
+    body = json.loads(body['body'])
+    
     #
     # let's map each row into an Job object:
     #
+
+    if body == []:
+      print("no jobs...")
+      return
+
     jobs = []
     for row in body:
       job = Job(row)
@@ -209,9 +217,7 @@ def jobs(baseurl):
     #
     # Now we can think OOP:
     #
-    if len(jobs) == 0:
-      print("no jobs...")
-      return
+
 
     for job in jobs:
       print(job.jobid)
@@ -454,116 +460,6 @@ def download(baseurl):
     return
 
 
-##########################################
-# upload and poll
-def upload_and_poll(baseurl):
-  print("Enter wav file name>")
-  local_filename = input()
-
-  if not pathlib.Path(local_filename).is_file():
-    print("Wav file '", local_filename, "' does not exist...")
-    return
-
-  print("Enter user id>")
-  userid = input()
-  
-  try:
-    #
-    # build the data packet:
-    #
-    infile = open(local_filename, "rb")
-    bytes = infile.read()
-    infile.close()
-
-    #
-    # now encode the pdf as base64. Note b64encode returns
-    # a bytes object, not a string. So then we have to convert
-    # (decode) the bytes -> string, and then we can serialize
-    # the string as JSON for upload to server:
-    #
-    data = base64.b64encode(bytes)
-    datastr = data.decode()
-
-    data = {"filename": local_filename, "data": datastr}
-
-    #
-    # call the web service:
-    #
-    api = '/song'
-    url = baseurl + api + "/" + userid
-
-    res = requests.post(url, json=data)
-
-    #
-    # let's look at what we got back:
-    #
-    if res.status_code != 200:
-      # failed:
-      print("Failed with status code:", res.status_code)
-      print("url: " + url)
-      if res.status_code == 400:
-        # we'll have an error message
-        body = res.json()
-        print("Error message:", body)
-      #
-      return
-
-    #
-    # success, extract jobid:
-    #
-    body = res.json()
-
-    jobid = body
-    #print("jobid" + jobid)
-
-    try:
-      #
-      # call the web service:
-      #
-      api = '/results'
-      url = baseurl + api + '/' + jobid
-      status = ""
-
-      while not status.startswith("error"):
-        # print("this is the url", url)
-        res = requests.get(url)
-
-        status = res.json()
-        #print("this is the res", res)
-        #print("return code:", res.status_code)
-        if res.status_code == 200:
-          break
-
-        print("Current status:", status)
-
-        time.sleep(1)
-
-      if status.startswith("error"):
-        print(status)
-        return
-
-      datastr = status
-
-      base64_bytes = datastr.encode()
-      bytes = base64.b64decode(base64_bytes)
-      results = bytes.decode()
-
-      print(results)
-      return
-  
-    except Exception as e:
-      logging.error("download() failed:")
-      logging.error("url: " + url)
-      logging.error(e)
-      return
-
-  except Exception as e:
-    logging.error("upload() failed:")
-    #logging.error("url: " + url)
-    logging.error(e)
-    return
-
-
   
 ############################################################
 # main
@@ -639,9 +535,9 @@ try:
     elif cmd == 4:
       upload(baseurl)
     elif cmd == 5:
-      download(baseurl)
+      uploadyoutube(baseurl)
     elif cmd == 6:
-      upload_and_poll(baseurl)
+      download(baseurl)
     else:
       print("** Unknown command, try again...")
     #
