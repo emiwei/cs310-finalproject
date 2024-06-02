@@ -65,11 +65,12 @@ def prompt():
   print(">> Enter a command:")
   print("   0 => end")
   print("   1 => songs")
-  print("   2 => jobs")
-  print("   3 => reset jobs")
-  print("   4 => upload song")
-  print("   5 => upload song via youtube")
-  print("   5 => download song")
+  print("   2 => users")
+  print("   3 => jobs")
+  print("   4 => reset jobs")
+  print("   5 => upload song")
+  print("   6 => upload song via youtube")
+  print("   7 => download song")
 
   cmd = input()
 
@@ -104,8 +105,12 @@ def songs(baseurl):
     #
     # call the web service:
     #
-    api = '/song'
-    url = baseurl + api
+
+    print("Enter user id>")
+    userid = input()
+
+    api = '/songs'
+    url = baseurl + api + "/" + userid
 
     res = requests.get(url)
 
@@ -123,30 +128,21 @@ def songs(baseurl):
       #
       return
 
-    #
-    # deserialize and extract users:
-    #
     body = res.json()
+    body = body['data']
 
-    #
-    # let's map each row into a User object:
-    #
     assets = []
     for row in body:
-      asset = Asset(row)
-      assets.append(asset)
-    #
-    # Now we can think OOP:
-    #
+      if row['Key'].endswith('.mid'):
+        assets.append(row) 
+
     if len(assets) == 0:
       print("no songs...")
       return
 
     for asset in assets:
-      print(asset.assetid)
-      print(" ", asset.userid)
-      print(" ", asset.assetname)
-    #
+      print(asset['Key'])
+
     return
 
   except Exception as e:
@@ -155,6 +151,62 @@ def songs(baseurl):
     logging.error(e)
     return
 
+def users(baseurl):
+  """
+  Prints out all the users in the database
+
+  Parameters
+  ----------
+  baseurl: baseurl for web service
+
+  Returns
+  -------
+  nothing
+  """
+
+  try:
+    #
+    # call the web service:
+    #
+    api = '/users'
+    url = baseurl + api
+
+    res = requests.get(url)
+
+    if res.status_code != 200:
+      # failed:
+      print("Failed with status code:", res.status_code)
+      print("url: " + url)
+      if res.status_code == 400:
+        # we'll have an error message
+        body = res.json()
+        print("Error message:", body)
+      #
+      return
+
+    body = res.json()
+
+    users = []
+    for row in body:
+      user = User(row)
+      users.append(user)
+
+    if len(users) == 0:
+      print("no users...")
+      return
+
+    for user in users:
+      print(user.userid)
+      print(" ", user.username)
+      print(" ", user.pwdhash)
+    #
+    return
+
+  except Exception as e:
+    logging.error("users() failed:")
+    logging.error("url: " + url)
+    logging.error(e)
+    return
 
 ############################################################
 #
@@ -369,7 +421,7 @@ def upload(baseurl):
 
     jobid = body
 
-    print("PDF uploaded, job id =", jobid)
+    print("Wav file uploaded, job id =", jobid)
     return
 
   except Exception as e:
@@ -401,9 +453,7 @@ def download(baseurl):
   jobid = input()
 
   try:
-    #
-    # call the web service:
-    #
+
     api = '/results'
     url = baseurl + api + '/' + jobid
 
@@ -438,19 +488,24 @@ def download(baseurl):
       #
       return
 
-    #
-    # if we get here, status code was 200, so we
-    # have results to deserialize and display:
-    #
     body = res.json()
 
-    datastr = body
+    datastr = body.get("results")
+    original_data_file = body.get("original_data_file")
+    
+    newfilename = original_data_file.replace(".wav", ".mid")
+
+    if not datastr:
+      print("No results found in the response.")
+      return
 
     base64_bytes = datastr.encode()
     bytes = base64.b64decode(base64_bytes)
-    results = bytes.decode()
 
-    print(results)
+    with open(newfilename, 'wb') as file:
+      file.write(bytes)
+
+    print("File downloaded and saved as '", newfilename, "'")
     return
 
   except Exception as e:
@@ -529,14 +584,16 @@ try:
     if cmd == 1:
       songs(baseurl)
     elif cmd == 2:
-      jobs(baseurl)
+      users(baseurl)
     elif cmd == 3:
-      reset(baseurl)
+      jobs(baseurl)
     elif cmd == 4:
-      upload(baseurl)
+      reset(baseurl)
     elif cmd == 5:
-      uploadyoutube(baseurl)
+      upload(baseurl)
     elif cmd == 6:
+      uploadyoutube(baseurl)
+    elif cmd == 7:
       download(baseurl)
     else:
       print("** Unknown command, try again...")
