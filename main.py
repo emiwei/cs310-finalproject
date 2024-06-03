@@ -762,6 +762,7 @@ def authenticate(baseurl, token):
     # success, token is valid:
     #
     print("token is valid!")
+    print("the userid is: ", res.json())
     return
 
   except Exception as e:
@@ -822,7 +823,18 @@ def wavtomp3(baseurl):
 
 
 def newuser(baseurl):
-  return 10
+  print("Enter username>")
+  username = input()
+  print("Enter password>")
+  password = getpass()
+  data = {"user": username, "pass": password}
+  url = baseurl + "/user"
+  res = requests.post(url, json = data)
+  if (res.status_code != 200):
+    print("Failed with status code:", res.status_code)
+  else:
+    print("new user created!")
+  return
   
 ############################################################
 # main
