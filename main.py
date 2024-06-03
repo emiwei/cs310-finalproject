@@ -77,7 +77,8 @@ def prompt():
   print("   8 => login")
   print("   9 => authenticate")
   print("  10 => new user")
-  print("  11 => logout")
+  print("  11 => convert wav to mp3 file")
+  print("  12 => logout")
 
   cmd = input()
 
@@ -259,10 +260,10 @@ def jobs(baseurl, token):
         # we'll have an error message
         body = res.json()
         print("Error message:", body)
-      elif res.status_code == 401:
-        body = res.json()
-        print(body)
-        return
+      # elif res.status_code == 401:
+      #   body = res.json()
+      #   print(body)
+      #   return
       #
       return
 
@@ -770,6 +771,56 @@ def authenticate(baseurl, token):
     logging.error("url: " + url)
     logging.error(e)
     return
+  
+def wavtomp3(baseurl):
+  try:
+
+    print("Enter filename>")
+    filename = input()
+
+    api = '/wav-to-mp3'
+    url = baseurl + api + "/" + filename
+
+    res = requests.post(url)
+
+    if res.status_code != 200:
+      # failed:
+      print("Failed with status code:", res.status_code)
+      print("url: " + url)
+      if res.status_code == 400:
+        # we'll have an error message
+        body = res.json()
+        print("Error message:", body)
+      #
+      return
+
+    body = res.json()
+
+    datastr = body.get("results")
+    results_file_key = body.get("results_file_key")
+
+    if not datastr:
+      print("No results found in the response.")
+      return
+
+    base64_bytes = datastr.encode()
+    bytes = base64.b64decode(base64_bytes)
+
+    with open(results_file_key, 'wb') as file:
+      file.write(bytes)
+
+    print("File downloaded and saved as '" + results_file_key + "'")
+    return
+    
+
+
+  except Exception as e:
+    logging.error("authenticate() failed:")
+    logging.error("url: " + url)
+    logging.error(e)
+    return
+
+
 
 
 def newuser(baseurl):
@@ -861,6 +912,8 @@ try:
     elif cmd == 10:
       newuser(baseurl)
     elif cmd == 11:
+      wavtomp3(baseurl)
+    elif cmd == 12:
       #
       # logout
       #
