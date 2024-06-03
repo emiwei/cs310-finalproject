@@ -459,7 +459,7 @@ def uploadyoutube(baseurl):
   print("Wav file uploaded, job id =", jobid)
 
 
-def upload(baseurl):
+def upload(baseurl,token):
   """
   Prompts the user for a local filename and user id, 
   and uploads that asset (PDF) to S3 for processing. 
@@ -472,6 +472,10 @@ def upload(baseurl):
   -------
   nothing
   """
+  if token is None:
+    print("No current token, please login")
+    return
+  req_header = {"Authentication": token}
 
   print("Enter wav filename>")
   local_filename = input()
@@ -479,9 +483,6 @@ def upload(baseurl):
   if not pathlib.Path(local_filename).is_file():
     print("Wav file '", local_filename, "' does not exist...")
     return
-
-  print("Enter user id>")
-  userid = input()
 
   try:
     #
@@ -506,9 +507,8 @@ def upload(baseurl):
     # call the web service:
     #
     api = '/song'
-    url = baseurl + api + "/" + userid
-
-    res = requests.post(url, json=data)
+    url = baseurl + api
+    res = requests.post(url, headers=req_header, json=data)
 
     #
     # let's look at what we got back:
@@ -900,7 +900,7 @@ try:
     elif cmd == 4:
       reset(baseurl)
     elif cmd == 5:
-      upload(baseurl)
+      upload(baseurl,token)
     elif cmd == 6:
       uploadyoutube(baseurl)
     elif cmd == 7:
