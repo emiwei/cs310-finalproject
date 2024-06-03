@@ -459,7 +459,7 @@ def uploadyoutube(baseurl):
   print("Wav file uploaded, job id =", jobid)
 
 
-def upload(baseurl,token):
+def upload(baseurl):
   """
   Prompts the user for a local filename and user id, 
   and uploads that asset (PDF) to S3 for processing. 
@@ -472,10 +472,8 @@ def upload(baseurl,token):
   -------
   nothing
   """
-  if token is None:
-    print("No current token, please login")
-    return
-  req_header = {"Authentication": token}
+  print("Enter the userid")
+  userid = input()
 
   print("Enter wav filename>")
   local_filename = input()
@@ -506,9 +504,9 @@ def upload(baseurl,token):
     #
     # call the web service:
     #
-    api = '/song'
-    url = baseurl + api
-    res = requests.post(url, headers=req_header, json=data)
+    api = '/song' + "/" + userid
+    url = baseurl + api 
+    res = requests.post(url, json=data)
 
     #
     # let's look at what we got back:
@@ -900,7 +898,7 @@ try:
     elif cmd == 4:
       reset(baseurl)
     elif cmd == 5:
-      upload(baseurl,token)
+      upload(baseurl)
     elif cmd == 6:
       uploadyoutube(baseurl)
     elif cmd == 7:
