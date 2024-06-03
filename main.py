@@ -13,6 +13,9 @@ import time
 
 from configparser import ConfigParser
 
+from getpass import getpass
+
+
 
 ############################################################
 #
@@ -71,6 +74,10 @@ def prompt():
   print("   5 => upload song")
   print("   6 => upload song via youtube")
   print("   7 => download song")
+  print("   8 => login")
+  print("   9 => authenticate")
+  print("  10 => new user")
+  print("  11 => logout")
 
   cmd = input()
 
@@ -212,7 +219,7 @@ def users(baseurl):
 #
 # jobs
 #
-def jobs(baseurl):
+def jobs(baseurl, token):
   """
   Prints out all the jobs in the database
 
@@ -232,7 +239,14 @@ def jobs(baseurl):
     api = '/jobs'
     url = baseurl + api
 
-    res = requests.get(url)
+    #
+    # make request:
+    #
+    if token is None:
+      print("No current token, please login")
+      return
+    req_header = {"Authentication": token}
+    res = requests.get(url, headers=req_header)
 
     #
     # let's look at what we got back:
@@ -245,23 +259,21 @@ def jobs(baseurl):
         # we'll have an error message
         body = res.json()
         print("Error message:", body)
+      elif res.status_code == 401:
+        body = res.json()
+        print(body)
+        return
       #
       return
 
     #
     # deserialize and extract jobs:
     #
-    body = res.json()
-    body = json.loads(body['body'])
-    
+
     #
     # let's map each row into an Job object:
     #
-
-    if body == []:
-      print("no jobs...")
-      return
-
+    body = res.json()
     jobs = []
     for row in body:
       job = Job(row)
@@ -269,7 +281,9 @@ def jobs(baseurl):
     #
     # Now we can think OOP:
     #
-
+    if len(jobs) == 0:
+      print("no jobs...")
+      return
 
     for job in jobs:
       print(job.jobid)
@@ -288,6 +302,61 @@ def jobs(baseurl):
     return
 
 
+############################################################
+#
+# reset
+#
+def reset(baseurl):
+  """
+  Resets the database back to initial state.
+
+  Parameters
+  ----------
+  baseurl: baseurl for web service
+
+  Returns
+  -------
+  nothing
+  """
+
+  try:
+    #
+    # call the web service:
+    #
+    api = '/reset'
+    url = baseurl + api
+
+    res = requests.delete(url)
+
+    #
+    # let's look at what we got back:
+    #
+    if res.status_code != 200:
+      # failed:
+      print("Failed with status code:", res.status_code)
+      print("url: " + url)
+      if res.status_code == 400:
+        # we'll have an error message
+        body = res.json()
+        print("Error message:", body)
+      #
+      return
+
+    #
+    # deserialize and print message
+    #
+    body = res.json()
+
+    msg = body
+
+    print(msg)
+    return
+
+  except Exception as e:
+    logging.error("reset() failed:")
+    logging.error("url: " + url)
+    logging.error(e)
+    return
 ############################################################
 #
 # reset
@@ -553,8 +622,158 @@ def download(baseurl):
     logging.error("url: " + url)
     logging.error(e)
     return
+def login(baseurl):
+  """
+  Prompts the user for a username and password, then tries
+  to log them in. If successful, returns the token returned
+  by the authentication service.
+
+  Parameters
+  ----------
+  baseurl: baseurl for web service
+
+  Returns
+  -------
+  token if successful, None if not
+  """
+
+  try:
+    username = input("username: ")
+    password = getpass()
+    duration = input("# of minutes before expiration? ")
+
+    #
+    # build message:
+    #
+    data = {"username": username, "password": password, "duration": duration}
+
+    #
+    # call the web service to upload the PDF:
+    #
+    api = '/auth'
+    url = baseurl + api
+
+    res = requests.post(url, json=data)
+
+    #
+    # clear password variable:
+    #
+    password = None
+
+    #
+    # let's look at what we got back:
+    #
+    if res.status_code == 401:
+      #
+      # authentication failed:
+      #
+      body = res.json()
+      print(body)
+      return None
+
+    if res.status_code != 200:
+      # failed:
+      print("Failed with status code:", res.status_code)
+      print("url: " + url)
+      if res.status_code == 400:
+        # we'll have an error message
+        body = res.json()
+        print("Error message:", body)
+      #
+      return
+
+    #
+    # success, extract token:
+    #
+    body = res.json()
+
+    token = body
+
+    print("logged in, token:", token)
+    return token
+
+  except Exception as e:
+    logging.error("login() failed:")
+    logging.error("url: " + url)
+    logging.error(e)
+    return None
 
 
+############################################################
+#
+# authenticate
+#
+def authenticate(baseurl, token):
+  """
+  Since tokens expire, this function authenticates the 
+  current token to see if still valid. Outputs the result.
+
+  Parameters
+  ----------
+  baseurl: baseurl for web service
+
+  Returns
+  -------
+  nothing
+  """
+
+  try:
+    if token is None:
+      print("No current token, please login")
+      return
+
+    print("token:", token)
+
+    #
+    # build message:
+    #
+    data = {"token": token}
+
+    #
+    # call the web service to upload the PDF:
+    #
+    api = '/auth'
+    url = baseurl + api
+
+    res = requests.post(url, json=data)
+
+    #
+    # let's look at what we got back:
+    #
+    if res.status_code == 401:
+      #
+      # authentication failed:
+      #
+      body = res.json()
+      print(body)
+      return
+
+    if res.status_code != 200:
+      # failed:
+      print("Failed with status code:", res.status_code)
+      print("url: " + url)
+      if res.status_code == 400:
+        # we'll have an error message
+        body = res.json()
+        print("Error message:", body)
+      #
+      return
+
+    #
+    # success, token is valid:
+    #
+    print("token is valid!")
+    return
+
+  except Exception as e:
+    logging.error("authenticate() failed:")
+    logging.error("url: " + url)
+    logging.error(e)
+    return
+
+
+def newuser(baseurl):
+  return 10
   
 ############################################################
 # main
@@ -613,7 +832,7 @@ try:
   lastchar = baseurl[len(baseurl) - 1]
   if lastchar == "/":
     baseurl = baseurl[:-1]
-
+  token = None
   #
   # main processing loop:
   #
@@ -626,7 +845,7 @@ try:
     elif cmd == 2:
       users(baseurl)
     elif cmd == 3:
-      jobs(baseurl)
+      jobs(baseurl,token)
     elif cmd == 4:
       reset(baseurl)
     elif cmd == 5:
@@ -635,6 +854,17 @@ try:
       uploadyoutube(baseurl)
     elif cmd == 7:
       download(baseurl)
+    elif cmd == 8:
+      token = login(baseurl)
+    elif cmd == 9:
+      authenticate(baseurl, token)
+    elif cmd == 10:
+      newuser(baseurl)
+    elif cmd == 11:
+      #
+      # logout
+      #
+      token = None
     else:
       print("** Unknown command, try again...")
     #
